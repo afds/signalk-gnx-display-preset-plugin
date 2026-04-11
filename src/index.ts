@@ -45,7 +45,7 @@ export default function (app: any) {
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
       evaluate();
-    }, options.debounceMs ?? 500);
+    }, options.debounceMs ?? 1000);
   }
 
   const plugin = {
@@ -73,7 +73,7 @@ export default function (app: any) {
           type: "number" as const,
           title: "Debounce (ms)",
           description: "Delay in milliseconds before sending a preset command after conditions change",
-          default: 500,
+          default: 1000,
         },
         profiles: {
           type: "array" as const,
@@ -184,7 +184,7 @@ export default function (app: any) {
       options = {
         sourceAddress: props.sourceAddress ?? DEFAULT_SRC,
         activeProfile: props.activeProfile ?? "",
-        debounceMs: props.debounceMs ?? 500,
+        debounceMs: props.debounceMs ?? 1000,
         profiles: props.profiles ?? [],
       };
       lastPresetIndex = null;

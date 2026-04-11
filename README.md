@@ -12,7 +12,7 @@ When racing, different display layouts are useful at different times — a count
 |---|---|---|
 | Source Address | `0` | NMEA 2000 source address for preset commands (CAN gateway may override) |
 | Active Profile | `default` | Name of the profile to activate |
-| Debounce (ms) | `500` | Delay before sending a command after conditions change |
+| Debounce (ms) | `1000` | Delay before sending a command after conditions change |
 | Profiles | see below | Array of profile configurations |
 
 ### Profiles and presets
@@ -70,6 +70,10 @@ Returns:
 2. When any subscribed path updates, evaluation is scheduled (debounced).
 3. Presets are evaluated in order (0-3). The first preset whose conditions all match is selected.
 4. If the selected preset differs from the current one, the plugin emits a PGN 61184 (Garmin proprietary) NMEA 2000 command to switch the GNX display.
+
+## Disclaimer
+
+This project is an independent demo and is not affiliated with, endorsed by, or connected to Garmin or its subsidiaries. "Garmin" and "GNX" are trademarks of Garmin. Use at your own risk. The authors assume no liability for any damage to equipment or loss of functionality resulting from the use of this software.
 
 ## License
 
