@@ -1,0 +1,28 @@
+{
+  "name": "signalk-gnx-display-preset-plugin",
+  "version": "1.0.0",
+  "description": "Signal K plugin that automatically selects GNX display presets based on configurable SignalK path conditions",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "tsc && mocha --exit"
+  },
+  "keywords": [
+    "signalk-node-server-plugin",
+    "signalk-category-nmea-2000"
+  ],
+  "signalk": {
+    "displayName": "GNX Display Preset Selector"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@signalk/server-api": "^1.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.10",
+    "chai": "^4.1.2",
+    "mocha": "^11.7.5",
+    "typescript": "^4.1.2"
+  }
+}
