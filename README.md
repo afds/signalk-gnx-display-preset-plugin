@@ -37,8 +37,8 @@ The plugin ships with a default racing profile:
 | Preset | Name | Conditions |
 |---|---|---|
 | 0 | race time | `navigation.racing.status` equals `countdown` |
-| 1 | beat | not countdown + true wind (water) between -90 and 90 deg |
-| 2 | run | not countdown + true wind (water) outside -90 to 90 deg |
+| 1 | beat | racing + true wind (water) between -90 and 90 deg |
+| 2 | run | racing + true wind (water) outside -90 to 90 deg |
 | 3 | *(empty)* | no conditions — never activates |
 
 Preset 0 takes priority: during countdown, the race time display is always shown regardless of wind angle.

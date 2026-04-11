@@ -89,14 +89,14 @@ export default function (app: any) {
                 {
                   name: "beat",
                   conditions: [
-                    { path: "navigation.racing.status", operator: "notEquals", value: "countdown" },
+                    { path: "navigation.racing.status", operator: "equals", value: "racing" },
                     { path: "environment.wind.angleTrueWater", operator: "between", min: -90, max: 90, unit: "deg" },
                   ],
                 },
                 {
                   name: "run",
                   conditions: [
-                    { path: "navigation.racing.status", operator: "notEquals", value: "countdown" },
+                    { path: "navigation.racing.status", operator: "equals", value: "racing" },
                     { path: "environment.wind.angleTrueWater", operator: "outside", min: -90, max: 90, unit: "deg" },
                   ],
                 },
