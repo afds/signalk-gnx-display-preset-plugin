@@ -51,7 +51,7 @@ export default function (app: any) {
   const plugin = {
     id: PLUGIN_ID,
     name: "GNX Display Preset Selector",
-    description: "Automatically selects GNX display presets based on SignalK path conditions",
+    description: "Automatically selects GNX display presets based on Signal K path conditions",
 
     schema: {
       type: "object" as const,
@@ -140,7 +140,7 @@ export default function (app: any) {
                         properties: {
                           path: {
                             type: "string" as const,
-                            title: "SignalK Path",
+                            title: "Signal K Path",
                             description: "e.g. navigation.racing.status or environment.wind.angleApparent",
                           },
                           operator: {

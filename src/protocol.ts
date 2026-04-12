@@ -1,4 +1,4 @@
-export const PLUGIN_ID = 'signalk-gnx-display-preset-plugin'
+export const PLUGIN_ID = 'signalk-gnx-display-preset'
 
 export const PGN_SINGLE = 61184
 

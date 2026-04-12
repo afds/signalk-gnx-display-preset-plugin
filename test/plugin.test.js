@@ -73,7 +73,7 @@ describe('Plugin lifecycle', () => {
   it('creates plugin with correct id and name', () => {
     const app = createMockApp({})
     const plugin = pluginFactory(app)
-    expect(plugin.id).to.equal('signalk-gnx-display-preset-plugin')
+    expect(plugin.id).to.equal('signalk-gnx-display-preset')
     expect(plugin.name).to.equal('GNX Display Preset Selector')
   })
 
