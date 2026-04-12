@@ -8,6 +8,16 @@ function eval$(expr, values, hysteresis, previouslyActive) {
 }
 
 describe('evaluate', () => {
+  describe('boolean literals', () => {
+    it('true always returns true', () => {
+      expect(eval$('true', {})).to.be.true
+    })
+
+    it('false always returns false', () => {
+      expect(eval$('false', {})).to.be.false
+    })
+  })
+
   describe('equality operators', () => {
     it('== returns true for matching string', () => {
       expect(eval$("a == 'x'", { a: 'x' })).to.be.true

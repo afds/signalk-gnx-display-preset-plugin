@@ -55,7 +55,7 @@ Precedence: `NOT` > `AND` > `OR` (standard boolean).
 
 #### Units
 
-An empty `when` field always matches — use this for a fallback preset that activates when no other preset applies.
+Use `true` for a fallback preset that always matches, and `false` (or empty) for an unused preset slot.
 
 #### Units
 
@@ -74,9 +74,9 @@ The plugin ships with a default racing profile:
 | 0 | Racing timer | `navigation.racing.status == 'countdown'` |
 | 1 | Upwind | `navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)` |
 | 2 | Downwind | `navigation.racing.status == 'racing' AND environment.wind.angleTrueWater OUTSIDE(-90deg, 90deg)` |
-| 3 | Sailing | *(empty — always matches)* |
+| 3 | Sailing | `true` |
 
-Preset 0 takes priority: during countdown, the Racing timer display is always shown regardless of wind angle. Preset 3 has an empty expression, which always matches — since presets 0-2 are evaluated first, it acts as a general sailing fallback when no other preset applies (including when Signal K paths are missing).
+Preset 0 takes priority: during countdown, the Racing timer display is always shown regardless of wind angle. Preset 3 uses `true` which always matches — since presets 0-2 are evaluated first, it acts as a general sailing fallback when no other preset applies (including when Signal K paths are missing).
 
 ## REST API
 

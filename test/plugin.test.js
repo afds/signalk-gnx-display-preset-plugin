@@ -252,7 +252,7 @@ describe('Preset emission', () => {
     }, 20)
   })
 
-  it('empty when acts as unconditional fallback', function (done) {
+  it('when: "true" acts as unconditional fallback', function (done) {
     const pathStore = { 'navigation.racing.status.value': 'unknown' }
     const app = createMockApp(pathStore)
     const plugin = pluginFactory(app)
@@ -263,7 +263,7 @@ describe('Preset emission', () => {
         name: 'test',
         presets: [
           { name: 'racing', when: "navigation.racing.status == 'racing'" },
-          { name: '', when: '' },
+          { name: 'fallback', when: 'true' },
           { name: '', when: '' },
           { name: '', when: '' }
         ]

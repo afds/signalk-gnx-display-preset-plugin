@@ -10,6 +10,8 @@ export type ExprNode =
   | { kind: 'lte'; path: string; value: number }
   | { kind: 'between'; path: string; min: number; max: number }
   | { kind: 'outside'; path: string; min: number; max: number }
+  | { kind: 'true' }
+  | { kind: 'false' }
 
 const DEG_TO_RAD = Math.PI / 180
 
@@ -120,7 +122,8 @@ function tokenize(input: string): Token[] {
       }
       const upper = word.toUpperCase()
       if (upper === 'AND' || upper === 'OR' || upper === 'NOT' ||
-          upper === 'BETWEEN' || upper === 'OUTSIDE') {
+          upper === 'BETWEEN' || upper === 'OUTSIDE' ||
+          upper === 'TRUE' || upper === 'FALSE') {
         tokens.push({ type: 'keyword', value: upper })
       } else {
         tokens.push({ type: 'path', value: word })
@@ -208,6 +211,16 @@ class Parser {
     const t = this.peek()
     if (!t) throw new Error('Unexpected end of expression')
 
+    // Boolean literals
+    if (t.type === 'keyword' && t.value === 'TRUE') {
+      this.advance()
+      return { kind: 'true' }
+    }
+    if (t.type === 'keyword' && t.value === 'FALSE') {
+      this.advance()
+      return { kind: 'false' }
+    }
+
     // Parenthesized expression
     if (t.type === 'paren' && t.value === '(') {
       this.advance()
@@ -281,6 +294,9 @@ export function extractPaths(node: ExprNode): string[] {
         break
       case 'not':
         walk(n.child)
+        break
+      case 'true':
+      case 'false':
         break
       default:
         paths.add(n.path)

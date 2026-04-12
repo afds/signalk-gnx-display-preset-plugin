@@ -4,6 +4,32 @@ const { parseExpression, extractPaths } = require('../dist/parser')
 const DEG = Math.PI / 180
 
 describe('parseExpression', () => {
+  describe('boolean literals', () => {
+    it('parses true', () => {
+      expect(parseExpression('true')).to.deep.equal({ kind: 'true' })
+    })
+
+    it('parses false', () => {
+      expect(parseExpression('false')).to.deep.equal({ kind: 'false' })
+    })
+
+    it('parses TRUE (case-insensitive)', () => {
+      expect(parseExpression('TRUE')).to.deep.equal({ kind: 'true' })
+    })
+
+    it('true in boolean expression', () => {
+      const node = parseExpression("true AND a == 1")
+      expect(node.kind).to.equal('and')
+      expect(node.left).to.deep.equal({ kind: 'true' })
+    })
+
+    it('false in boolean expression', () => {
+      const node = parseExpression("a == 1 OR false")
+      expect(node.kind).to.equal('or')
+      expect(node.right).to.deep.equal({ kind: 'false' })
+    })
+  })
+
   describe('equality operators', () => {
     it('parses == with string literal', () => {
       const node = parseExpression("navigation.racing.status == 'countdown'")

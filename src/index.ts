@@ -35,11 +35,7 @@ export default function (app: any) {
     let result: number | null = null;
     for (let i = 0; i < parsedPresets.length && i < 4; i++) {
       const node = parsedPresets[i];
-      if (node === null) {
-        // Empty expression = always true (unconditional fallback)
-        result = i;
-        break;
-      }
+      if (!node) continue;
       const previouslyActive = lastPresetIndex === i;
       if (evaluate(node, (path) => app.getSelfPath(path + ".value"), hysteresis, previouslyActive)) {
         result = i;
@@ -114,7 +110,7 @@ export default function (app: any) {
                 },
                 {
                   name: "Sailing",
-                  when: "",
+                  when: "true",
                 },
               ],
             },

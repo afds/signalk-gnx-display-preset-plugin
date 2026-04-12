@@ -18,6 +18,11 @@ export function evaluate(
     case 'not':
       return !evaluate(node.child, getPathValue, hysteresis, previouslyActive)
 
+    case 'true':
+      return true
+    case 'false':
+      return false
+
     case 'eq': {
       const v = getPathValue(node.path)
       if (v === undefined || v === null) return false
