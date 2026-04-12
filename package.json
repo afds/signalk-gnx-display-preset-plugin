@@ -15,6 +15,10 @@
   "signalk": {
     "displayName": "GNX Display Preset Selector"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/afds/signalk-gnx-display-preset-plugin.git"
+  },
   "license": "Apache-2.0",
   "dependencies": {
     "@signalk/server-api": "^1.39.0"
