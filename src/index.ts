@@ -148,11 +148,8 @@ export default function (app: any) {
                       type: "string" as const,
                       title: "Condition Expression",
                       description:
-                        "Expression that activates this preset. " +
                         "Operators: == != > < >= <= BETWEEN(min, max) OUTSIDE(min, max). " +
-                        "Logic: AND OR NOT ( ). " +
-                        "Append 'deg' to numbers for degree-to-radian conversion. " +
-                        "Example: navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)",
+                        "Logic: AND OR NOT ( ). Append 'deg' for degree-to-radian conversion.",
                     },
                   },
                 },
@@ -168,7 +165,10 @@ export default function (app: any) {
         items: {
           presets: {
             items: {
-              when: { "ui:widget": "textarea" },
+              when: {
+                "ui:widget": "textarea",
+                "ui:placeholder": "navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)",
+              },
             },
           },
         },
