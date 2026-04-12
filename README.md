@@ -1,6 +1,6 @@
 # signalk-gnx-display-preset-plugin
 
-Signal K plugin that automatically switches Garmin GNX display presets based on configurable conditions evaluated against Signal K data paths.
+Signal K plugin that automatically switches Garmin GNX display presets based on configurable condition expressions evaluated against Signal K data paths.
 
 ## Use case
 
@@ -17,31 +17,66 @@ When racing, different display layouts are useful at different times — a count
 
 ### Profiles and presets
 
-Each profile contains exactly 4 presets (matching the 4 GNX display preset slots). Each preset has a name and a list of conditions. All conditions in a preset must be true for it to activate (AND logic). Presets are evaluated in order — the first match wins.
+Each profile contains exactly 4 presets (matching the 4 GNX display preset slots). Each preset has a name and a `when` expression. Presets are evaluated in order — the first match wins.
 
-### Conditions
+Profiles also support an optional `hysteresis` value (in degrees) that widens numeric boundaries for the currently active preset, preventing rapid flapping when values oscillate near a threshold.
 
-| Operator | Fields | Description |
+### Condition expressions
+
+Each preset's `when` field accepts a human-readable expression string:
+
+```
+navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)
+```
+
+#### Operators
+
+| Operator | Example | Description |
 |---|---|---|
-| `equals` | `value` | Path value must equal the given string or number |
-| `notEquals` | `value` | Path value must not equal the given string or number |
-| `between` | `min`, `max` | Numeric value must be >= min and <= max (inclusive) |
-| `outside` | `min`, `max` | Numeric value must be < min or > max |
+| `==` | `path == 'value'` | Equals (string or number) |
+| `!=` | `path != 'value'` | Not equals |
+| `>` | `path > 10` | Greater than |
+| `<` | `path < 10` | Less than |
+| `>=` | `path >= 10` | Greater than or equal |
+| `<=` | `path <= 10` | Less than or equal |
+| `BETWEEN(min, max)` | `path BETWEEN(-90, 90)` | Value >= min and <= max (inclusive) |
+| `OUTSIDE(min, max)` | `path OUTSIDE(-90, 90)` | Value < min or > max |
 
-Set **Unit** to `deg` on any condition to configure angles in degrees — they are converted to radians for comparison against Signal K values.
+#### Logic
+
+| Keyword | Description |
+|---|---|
+| `AND` | Both sides must be true |
+| `OR` | Either side must be true |
+| `NOT` | Inverts the following expression |
+| `( )` | Group expressions to override precedence |
+
+Precedence: `NOT` > `AND` > `OR` (standard boolean).
+
+#### Units
+
+An empty `when` field always matches — use this for a fallback preset that activates when no other preset applies.
+
+#### Units
+
+Append `deg` to any number to convert degrees to radians for comparison against Signal K values:
+
+```
+environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)
+```
 
 ### Default profile
 
 The plugin ships with a default racing profile:
 
-| Preset | Name | Conditions |
+| Preset | Name | Expression |
 |---|---|---|
-| 0 | race time | `navigation.racing.status` equals `countdown` |
-| 1 | beat | `navigation.racing.status` equals `racing` AND `environment.wind.angleTrueWater` between -90° and 90° |
-| 2 | run | `navigation.racing.status` equals `racing` AND `environment.wind.angleTrueWater` outside -90° to 90° |
-| 3 | *(empty)* | no conditions — never activates |
+| 0 | Racing timer | `navigation.racing.status == 'countdown'` |
+| 1 | Upwind | `navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)` |
+| 2 | Downwind | `navigation.racing.status == 'racing' AND environment.wind.angleTrueWater OUTSIDE(-90deg, 90deg)` |
+| 3 | Sailing | *(empty — always matches)* |
 
-Preset 0 takes priority: during countdown, the race time display is always shown regardless of wind angle.
+Preset 0 takes priority: during countdown, the Racing timer display is always shown regardless of wind angle. Preset 3 has an empty expression, which always matches — since presets 0-2 are evaluated first, it acts as a general sailing fallback when no other preset applies (including when Signal K paths are missing).
 
 ## REST API
 
@@ -59,16 +94,15 @@ Returns:
   "activePreset": 1,
   "profiles": ["default"]
 }
-
 ```
 
 `activePreset` is `null` when no preset conditions are met.
 
 ## How it works
 
-1. On start, the plugin subscribes to all Signal K paths referenced in the active profile's conditions.
+1. On start, the plugin parses all `when` expressions and subscribes to the Signal K paths they reference.
 2. When any subscribed path updates, evaluation is scheduled (debounced).
-3. Presets are evaluated in order (0-3). The first preset whose conditions all match is selected.
+3. Presets are evaluated in order (0-3). The first preset whose expression matches is selected.
 4. If the selected preset differs from the current one, the plugin emits a PGN 61184 (Garmin proprietary) NMEA 2000 command to switch the GNX display.
 
 ## Disclaimer

@@ -60,10 +60,10 @@ const DEFAULT_CONFIG = {
     {
       name: 'test',
       presets: [
-        { conditions: [{ path: 'navigation.racing.status', operator: 'equals', value: 'countdown' }] },
-        { conditions: [{ path: 'navigation.racing.status', operator: 'equals', value: 'racing' }] },
-        { conditions: [] },
-        { conditions: [] }
+        { name: 'countdown', when: "navigation.racing.status == 'countdown'" },
+        { name: 'racing', when: "navigation.racing.status == 'racing'" },
+        { name: 'finished', when: "navigation.racing.status == 'finished'" },
+        { name: '', when: "navigation.racing.status == 'practice'" }
       ]
     }
   ]
@@ -83,6 +83,13 @@ describe('Plugin lifecycle', () => {
     expect(plugin.schema).to.exist
     expect(plugin.schema.properties.profiles).to.exist
     expect(plugin.schema.properties.activeProfile).to.exist
+  })
+
+  it('has a uiSchema with textarea for when field', () => {
+    const app = createMockApp({})
+    const plugin = pluginFactory(app)
+    expect(plugin.uiSchema).to.exist
+    expect(plugin.uiSchema.profiles.items.presets.items.when['ui:widget']).to.equal('textarea')
   })
 
   it('starts and stops without errors', () => {
@@ -130,7 +137,7 @@ describe('Subscription setup', () => {
     const plugin = pluginFactory(app)
     plugin.start({
       ...DEFAULT_CONFIG,
-      profiles: [{ name: 'test', presets: [{ conditions: [] }, { conditions: [] }, { conditions: [] }, { conditions: [] }] }]
+      profiles: [{ name: 'test', presets: [{ when: '' }, { when: '' }, { when: '' }, { when: '' }] }]
     })
     expect(app._subscribedPaths).to.be.null
     plugin.stop()
@@ -242,6 +249,35 @@ describe('Preset emission', () => {
         plugin.stop()
         done()
       }, 20)
+    }, 20)
+  })
+
+  it('empty when acts as unconditional fallback', function (done) {
+    const pathStore = { 'navigation.racing.status.value': 'unknown' }
+    const app = createMockApp(pathStore)
+    const plugin = pluginFactory(app)
+    const config = {
+      ...DEFAULT_CONFIG,
+      debounceMs: 5,
+      profiles: [{
+        name: 'test',
+        presets: [
+          { name: 'racing', when: "navigation.racing.status == 'racing'" },
+          { name: '', when: '' },
+          { name: '', when: '' },
+          { name: '', when: '' }
+        ]
+      }]
+    }
+    plugin.start(config)
+
+    app._deltaCb({})
+
+    setTimeout(() => {
+      const pgn = app.emitted[app.emitted.length - 1]
+      expect(pgn['Preset Index']).to.equal(1)
+      plugin.stop()
+      done()
     }, 20)
   })
 

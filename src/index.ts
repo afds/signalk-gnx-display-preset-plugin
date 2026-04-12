@@ -1,6 +1,7 @@
 import { PLUGIN_ID, DEFAULT_SRC } from "./protocol";
 import { buildSelectPreset } from "./n2k";
-import { evaluateProfile, extractPaths } from "./conditions";
+import { parseExpression, extractPaths, ExprNode } from "./parser";
+import { evaluate } from "./expression";
 import { PluginOptions, ProfileConfig } from "./types";
 
 const pgnDefinitions = require("./pgns");
@@ -13,6 +14,7 @@ export default function (app: any) {
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let initialTimer: ReturnType<typeof setTimeout> | null = null;
   let lastPresetIndex: number | null = null;
+  let parsedPresets: (ExprNode | null)[] = [];
 
   function src(): number {
     return options.sourceAddress ?? DEFAULT_SRC;
@@ -22,13 +24,28 @@ export default function (app: any) {
     return options.profiles?.find((p) => p.name === options.activeProfile);
   }
 
-  function evaluate(): void {
+  function evaluateNow(): void {
     const profile = getActiveProfile();
     if (!profile) return;
 
-    const result = evaluateProfile(profile, (path: string) => {
-      return app.getSelfPath(path + ".value");
-    });
+    const hysteresis = profile.hysteresis
+      ? profile.hysteresis * (Math.PI / 180)
+      : 0;
+
+    let result: number | null = null;
+    for (let i = 0; i < parsedPresets.length && i < 4; i++) {
+      const node = parsedPresets[i];
+      if (node === null) {
+        // Empty expression = always true (unconditional fallback)
+        result = i;
+        break;
+      }
+      const previouslyActive = lastPresetIndex === i;
+      if (evaluate(node, (path) => app.getSelfPath(path + ".value"), hysteresis, previouslyActive)) {
+        result = i;
+        break;
+      }
+    }
 
     if (result !== null && result !== lastPresetIndex) {
       debug("Preset changed: %s -> %d", lastPresetIndex, result);
@@ -44,7 +61,7 @@ export default function (app: any) {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
-      evaluate();
+      evaluateNow();
     }, options.debounceMs ?? 1000);
   }
 
@@ -81,28 +98,23 @@ export default function (app: any) {
           default: [
             {
               name: "default",
+              hysteresis: 5,
               presets: [
                 {
-                  name: "race time",
-                  conditions: [{ path: "navigation.racing.status", operator: "equals", value: "countdown" }],
+                  name: "Racing timer",
+                  when: "navigation.racing.status == 'countdown'",
                 },
                 {
-                  name: "beat",
-                  conditions: [
-                    { path: "navigation.racing.status", operator: "equals", value: "racing" },
-                    { path: "environment.wind.angleTrueWater", operator: "between", min: -90, max: 90, unit: "deg" },
-                  ],
+                  name: "Upwind",
+                  when: "navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)",
                 },
                 {
-                  name: "run",
-                  conditions: [
-                    { path: "navigation.racing.status", operator: "equals", value: "racing" },
-                    { path: "environment.wind.angleTrueWater", operator: "outside", min: -90, max: 90, unit: "deg" },
-                  ],
+                  name: "Downwind",
+                  when: "navigation.racing.status == 'racing' AND environment.wind.angleTrueWater OUTSIDE(-90deg, 90deg)",
                 },
                 {
-                  name: "",
-                  conditions: [],
+                  name: "Sailing",
+                  when: "",
                 },
               ],
             },
@@ -115,6 +127,12 @@ export default function (app: any) {
               name: {
                 type: "string" as const,
                 title: "Profile Name",
+              },
+              hysteresis: {
+                type: "number" as const,
+                title: "Hysteresis (degrees)",
+                description: "Deadband applied to numeric boundaries to prevent preset flapping",
+                default: 0,
               },
               presets: {
                 type: "array" as const,
@@ -130,51 +148,31 @@ export default function (app: any) {
                       title: "Preset Name (optional)",
                       description: "Display label for this preset",
                     },
-                    conditions: {
-                      type: "array" as const,
-                      title: "Conditions (all must be true)",
-                      items: {
-                        type: "object" as const,
-                        title: "Condition",
-                        required: ["path", "operator"],
-                        properties: {
-                          path: {
-                            type: "string" as const,
-                            title: "Signal K Path",
-                            description: "e.g. navigation.racing.status or environment.wind.angleApparent",
-                          },
-                          operator: {
-                            type: "string" as const,
-                            title: "Operator",
-                            enum: ["equals", "notEquals", "between", "outside"],
-                            default: "equals",
-                          },
-                          value: {
-                            type: "string" as const,
-                            title: "Value (for equals/notEquals)",
-                            description: "String or number to compare against",
-                          },
-                          min: {
-                            type: "number" as const,
-                            title: "Min (for between/outside)",
-                          },
-                          max: {
-                            type: "number" as const,
-                            title: "Max (for between/outside)",
-                          },
-                          unit: {
-                            type: "string" as const,
-                            title: "Unit conversion",
-                            description: 'Set to "deg" to configure angles in degrees (converted to radians for comparison)',
-                            enum: ["", "deg"],
-                            default: "",
-                          },
-                        },
-                      },
+                    when: {
+                      type: "string" as const,
+                      title: "Condition Expression",
+                      description:
+                        "Expression that activates this preset. " +
+                        "Operators: == != > < >= <= BETWEEN(min, max) OUTSIDE(min, max). " +
+                        "Logic: AND OR NOT ( ). " +
+                        "Append 'deg' to numbers for degree-to-radian conversion. " +
+                        "Example: navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)",
                     },
                   },
                 },
               },
+            },
+          },
+        },
+      },
+    },
+
+    uiSchema: {
+      profiles: {
+        items: {
+          presets: {
+            items: {
+              when: { "ui:widget": "textarea" },
             },
           },
         },
@@ -189,6 +187,7 @@ export default function (app: any) {
         profiles: props.profiles ?? [],
       };
       lastPresetIndex = null;
+      parsedPresets = [];
       unsubscribes = [];
 
       app.emitPropertyValue("canboat-custom-pgns", pgnDefinitions);
@@ -201,7 +200,28 @@ export default function (app: any) {
         return;
       }
 
-      const paths = extractPaths(profile);
+      // Parse all preset expressions
+      const allPaths = new Set<string>();
+      for (const preset of profile.presets) {
+        if (preset.when && preset.when.trim()) {
+          try {
+            const node = parseExpression(preset.when);
+            parsedPresets.push(node);
+            for (const p of extractPaths(node)) {
+              allPaths.add(p);
+            }
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            app.error(`Failed to parse expression for preset "${preset.name}": ${msg}`);
+            app.setPluginError(`Parse error in "${preset.name}": ${msg}`);
+            parsedPresets.push(null);
+          }
+        } else {
+          parsedPresets.push(null);
+        }
+      }
+
+      const paths = Array.from(allPaths);
       if (paths.length === 0) {
         app.setPluginStatus("Active profile has no conditions");
         debug('Profile "%s" has no paths to subscribe to', profile.name);
@@ -228,7 +248,7 @@ export default function (app: any) {
 
       initialTimer = setTimeout(() => {
         initialTimer = null;
-        evaluate();
+        evaluateNow();
       }, 1000);
 
       app.setPluginStatus(`Running profile "${profile.name}" (${paths.length} paths)`);
@@ -247,6 +267,7 @@ export default function (app: any) {
       unsubscribes.forEach((f) => f());
       unsubscribes = [];
       lastPresetIndex = null;
+      parsedPresets = [];
       debug("Plugin stopped");
     },
 
