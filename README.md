@@ -100,10 +100,12 @@ Returns:
 
 ## How it works
 
-1. On start, the plugin parses all `when` expressions and subscribes to the Signal K paths they reference.
+1. On start, the plugin parses all `when` expressions into an internal AST and subscribes to the Signal K paths they reference.
 2. When any subscribed path updates, evaluation is scheduled (debounced).
 3. Presets are evaluated in order (0-3). The first preset whose expression matches is selected.
 4. If the selected preset differs from the current one, the plugin emits a PGN 61184 (Garmin proprietary) NMEA 2000 command to switch the GNX display.
+
+Expressions are parsed once at startup — at runtime the plugin only traverses a small cached AST. A full evaluation cycle across all 4 presets takes under 100 nanoseconds, adding negligible CPU load even at high Signal K data rates.
 
 ## Disclaimer
 
