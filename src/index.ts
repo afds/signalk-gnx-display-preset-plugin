@@ -165,10 +165,7 @@ export default function (app: any) {
         items: {
           presets: {
             items: {
-              when: {
-                "ui:widget": "textarea",
-                "ui:placeholder": "navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)",
-              },
+              when: { "ui:widget": "textarea" },
             },
           },
         },
