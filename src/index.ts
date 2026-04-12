@@ -150,6 +150,7 @@ export default function (app: any) {
                             default: "equals",
                           },
                           value: {
+                            type: "string" as const,
                             title: "Value (for equals/notEquals)",
                             description: "String or number to compare against",
                           },
