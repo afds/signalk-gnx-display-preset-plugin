@@ -321,6 +321,44 @@ describe('Debounce', () => {
       done()
     }, 60)
   })
+
+  it('does not starve under continuous deltas (enforces maxWait)', function (done) {
+    // Regression test: before the fix, a stream of deltas arriving faster than
+    // debounceMs would keep resetting the debounce timer indefinitely, so
+    // evaluateNow() would never run and the preset would never switch.
+    this.timeout(2000)
+    const pathStore = { 'navigation.racing.status.value': 'countdown' }
+    const app = createMockApp(pathStore)
+    const plugin = pluginFactory(app)
+    const debounceMs = 50
+    plugin.start({ ...DEFAULT_CONFIG, debounceMs })
+
+    // Establish preset 0 (countdown)
+    app._deltaCb({})
+
+    setTimeout(() => {
+      expect(app.emitted[app.emitted.length - 1]['Preset Index']).to.equal(0)
+
+      // Now transition to racing and fire a steady stream of deltas
+      // at 20ms intervals (well under debounceMs=50).
+      pathStore['navigation.racing.status.value'] = 'racing'
+      let fired = 0
+      const stream = setInterval(() => {
+        app._deltaCb({})
+        if (++fired >= 30) clearInterval(stream)
+      }, 20)
+
+      // Within 2*debounceMs (the maxWait bound) plus a little slack, we must
+      // have emitted the new preset (index 1) despite the continuous stream.
+      setTimeout(() => {
+        clearInterval(stream)
+        const lastPgn = app.emitted[app.emitted.length - 1]
+        expect(lastPgn['Preset Index']).to.equal(1)
+        plugin.stop()
+        done()
+      }, debounceMs * 2 + 80)
+    }, debounceMs + 20)
+  })
 })
 
 
