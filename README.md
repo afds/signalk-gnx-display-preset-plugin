@@ -1,5 +1,7 @@
 # signalk-gnx-display-preset-plugin
 
+[![npm version](https://img.shields.io/npm/v/signalk-gnx-display-preset-plugin.svg)](https://www.npmjs.com/package/signalk-gnx-display-preset-plugin)
+
 Signal K plugin that automatically switches Garmin GNX display presets based on configurable condition expressions evaluated against Signal K data paths.
 
 ## Use case
