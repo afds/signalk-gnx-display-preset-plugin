@@ -12,6 +12,7 @@ export default function (app: any) {
   let options: PluginOptions;
   let unsubscribes: Array<() => void> = [];
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let debounceFirstScheduledAt: number | null = null;
   let initialTimer: ReturnType<typeof setTimeout> | null = null;
   let lastPresetIndex: number | null = null;
   let parsedPresets: (ExprNode | null)[] = [];
@@ -54,11 +55,27 @@ export default function (app: any) {
   }
 
   function scheduleEvaluation(): void {
+    const debounceMs = options.debounceMs ?? 1000;
+    const now = Date.now();
+
+    // Track when we first scheduled an evaluation (since the last one fired)
+    // so we can enforce a maxWait bound even under continuous updates.
+    if (debounceFirstScheduledAt === null) {
+      debounceFirstScheduledAt = now;
+    }
+
+    // maxWait caps how long evaluation can be deferred when deltas arrive
+    // faster than debounceMs (otherwise the debounce starves indefinitely).
+    const maxWait = debounceMs * 2;
+    const remainingMaxWait = Math.max(0, debounceFirstScheduledAt + maxWait - now);
+    const delay = Math.min(debounceMs, remainingMaxWait);
+
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
+      debounceFirstScheduledAt = null;
       evaluateNow();
-    }, options.debounceMs ?? 1000);
+    }, delay);
   }
 
   const plugin = {
@@ -182,6 +199,7 @@ export default function (app: any) {
       lastPresetIndex = null;
       parsedPresets = [];
       unsubscribes = [];
+      debounceFirstScheduledAt = null;
 
       app.emitPropertyValue("canboat-custom-pgns", pgnDefinitions);
       debug("Registered custom PGN definitions");
@@ -253,6 +271,7 @@ export default function (app: any) {
         clearTimeout(debounceTimer);
         debounceTimer = null;
       }
+      debounceFirstScheduledAt = null;
       if (initialTimer) {
         clearTimeout(initialTimer);
         initialTimer = null;
