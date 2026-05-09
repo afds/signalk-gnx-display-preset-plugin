@@ -1,10 +1,67 @@
+# Dependabot config
+# Grouping strategy: cohorts fail together → group; runtime deps and majors → individual PRs.
+# Security updates are never grouped (default behavior; do NOT add applies-to: security-updates).
 version: 2
 updates:
+  # ---------------------------------------------------------------------------
+  # npm — root package.json
+  # Runtime deps (@signalk/server-api) stay ungrouped: they ship to users.
+  # Majors stay ungrouped across all groups (update-types restricts to minor/patch),
+  # except @types/* which are cosmetic and grouped aggressively.
+  # ---------------------------------------------------------------------------
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+    commit-message:
+      prefix: deps
+      prefix-development: deps-dev
+    groups:
+      # Cosmetic type definitions — safe to batch, including majors.
+      types:
+        patterns:
+          - "@types/*"
+        update-types:
+          - major
+          - minor
+          - patch
+      # Test stack moves as a unit; breakage surfaces together in `npm test`.
+      test-stack:
+        patterns:
+          - mocha
+          - chai
+        update-types:
+          - minor
+          - patch
+      # Catch-all for remaining dev deps at low-risk update levels (currently: typescript).
+      # Excludes packages already covered by the groups above to avoid double-matching.
+      dev-minor-patch:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+        exclude-patterns:
+          - "@types/*"
+          - mocha
+          - chai
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions — workflows under .github/workflows/
+  # Small surface (actions/checkout, actions/setup-node); one group is enough.
+  # ---------------------------------------------------------------------------
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns:
+          - "*"
