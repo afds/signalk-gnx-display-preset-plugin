@@ -1,6 +1,6 @@
 {
   "name": "signalk-gnx-display-preset-plugin",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Signal K plugin that automatically selects GNX display presets based on configurable Signal K path conditions",
   "main": "index.js",
   "scripts": {
