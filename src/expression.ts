@@ -3,20 +3,17 @@ import { ExprNode } from './parser'
 export function evaluate(
   node: ExprNode,
   getPathValue: (path: string) => unknown,
-  hysteresis?: number,
   previouslyActive?: boolean
 ): boolean {
-  const h = previouslyActive && hysteresis ? hysteresis : 0
-
   switch (node.kind) {
     case 'and':
-      return evaluate(node.left, getPathValue, hysteresis, previouslyActive)
-          && evaluate(node.right, getPathValue, hysteresis, previouslyActive)
+      return evaluate(node.left, getPathValue, previouslyActive)
+          && evaluate(node.right, getPathValue, previouslyActive)
     case 'or':
-      return evaluate(node.left, getPathValue, hysteresis, previouslyActive)
-          || evaluate(node.right, getPathValue, hysteresis, previouslyActive)
+      return evaluate(node.left, getPathValue, previouslyActive)
+          || evaluate(node.right, getPathValue, previouslyActive)
     case 'not':
-      return !evaluate(node.child, getPathValue, hysteresis, previouslyActive)
+      return !evaluate(node.child, getPathValue, previouslyActive)
 
     case 'true':
       return true
@@ -37,32 +34,37 @@ export function evaluate(
     case 'gt': {
       const v = getPathValue(node.path)
       if (typeof v !== 'number') return false
-      return v > node.value - h
+      return v > node.value
     }
     case 'lt': {
       const v = getPathValue(node.path)
       if (typeof v !== 'number') return false
-      return v < node.value + h
+      return v < node.value
     }
     case 'gte': {
       const v = getPathValue(node.path)
       if (typeof v !== 'number') return false
-      return v >= node.value - h
+      return v >= node.value
     }
     case 'lte': {
       const v = getPathValue(node.path)
       if (typeof v !== 'number') return false
-      return v <= node.value + h
+      return v <= node.value
     }
 
     case 'between': {
       const v = getPathValue(node.path)
       if (typeof v !== 'number') return false
+      // Hysteresis widens the accepted range, but only while this preset is already active,
+      // so the threshold to *enter* is strict and the threshold to *leave* is sticky.
+      const h = previouslyActive && node.hysteresis ? node.hysteresis : 0
       return v >= node.min - h && v <= node.max + h
     }
     case 'outside': {
       const v = getPathValue(node.path)
       if (typeof v !== 'number') return false
+      // Hysteresis narrows the inner "dead zone" while active, making "outside" sticky.
+      const h = previouslyActive && node.hysteresis ? node.hysteresis : 0
       return v < node.min + h || v > node.max - h
     }
 

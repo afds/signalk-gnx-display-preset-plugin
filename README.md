@@ -21,14 +21,12 @@ When racing, different display layouts are useful at different times — a count
 
 Each profile contains exactly 4 presets (matching the 4 GNX display preset slots). Each preset has a name and a `when` expression. Presets are evaluated in order — the first match wins.
 
-Profiles also support an optional `hysteresis` value (in degrees) that widens numeric boundaries for the currently active preset, preventing rapid flapping when values oscillate near a threshold.
-
 ### Condition expressions
 
 Each preset's `when` field accepts a human-readable expression string:
 
 ```
-navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)
+navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg, 5deg)
 ```
 
 #### Operators
@@ -41,8 +39,22 @@ navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN
 | `<` | `path < 10` | Less than |
 | `>=` | `path >= 10` | Greater than or equal |
 | `<=` | `path <= 10` | Less than or equal |
-| `BETWEEN(min, max)` | `path BETWEEN(-90, 90)` | Value >= min and <= max (inclusive) |
-| `OUTSIDE(min, max)` | `path OUTSIDE(-90, 90)` | Value < min or > max |
+| `BETWEEN(min, max [, hysteresis])` | `path BETWEEN(-90, 90, 5)` | Value >= min and <= max (inclusive) |
+| `OUTSIDE(min, max [, hysteresis])` | `path OUTSIDE(-90, 90, 5)` | Value < min or > max |
+
+#### Hysteresis (optional)
+
+`BETWEEN` and `OUTSIDE` accept an optional third argument — a non-negative deadband that widens the accepted range *while the preset is already active*. The entry threshold stays strict; the exit threshold becomes sticky. This prevents rapid flapping between presets when a value oscillates around a boundary.
+
+Example — Upwind preset stays active until wind angle drifts past ±95° rather than flipping at exactly ±90°:
+
+```
+environment.wind.angleTrueWater BETWEEN(-90deg, 90deg, 5deg)
+```
+
+The `deg` suffix works for the hysteresis argument too, since the tokenizer converts degrees to radians uniformly.
+
+Hysteresis is currently supported only on `BETWEEN` and `OUTSIDE`. Other comparison operators (`>`, `<`, `>=`, `<=`) do not accept a hysteresis argument.
 
 #### Logic
 
@@ -74,8 +86,8 @@ The plugin ships with a default racing profile:
 | Preset | Name | Expression |
 |---|---|---|
 | 0 | Racing timer | `navigation.racing.status == 'countdown'` |
-| 1 | Upwind | `navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)` |
-| 2 | Downwind | `navigation.racing.status == 'racing' AND environment.wind.angleTrueWater OUTSIDE(-90deg, 90deg)` |
+| 1 | Upwind | `navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg, 5deg)` |
+| 2 | Downwind | `navigation.racing.status == 'racing' AND environment.wind.angleTrueWater OUTSIDE(-90deg, 90deg, 5deg)` |
 | 3 | Sailing | `true` |
 
 Preset 0 takes priority: during countdown, the Racing timer display is always shown regardless of wind angle. Preset 3 uses `true` which always matches — since presets 0-2 are evaluated first, it acts as a general sailing fallback when no other preset applies (including when Signal K paths are missing).

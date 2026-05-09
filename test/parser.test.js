@@ -94,6 +94,33 @@ describe('parseExpression', () => {
       expect(node.min).to.be.closeTo(-90 * DEG, 1e-10)
       expect(node.max).to.be.closeTo(90 * DEG, 1e-10)
     })
+
+    it('parses BETWEEN with optional hysteresis', () => {
+      const node = parseExpression('a BETWEEN(-60, 60, 5)')
+      expect(node).to.deep.equal({ kind: 'between', path: 'a', min: -60, max: 60, hysteresis: 5 })
+    })
+
+    it('parses OUTSIDE with optional hysteresis', () => {
+      const node = parseExpression('a OUTSIDE(-60, 60, 5)')
+      expect(node).to.deep.equal({ kind: 'outside', path: 'a', min: -60, max: 60, hysteresis: 5 })
+    })
+
+    it('parses BETWEEN with deg hysteresis', () => {
+      const node = parseExpression('wind.angle BETWEEN(-90deg, 90deg, 5deg)')
+      expect(node.kind).to.equal('between')
+      expect(node.min).to.be.closeTo(-90 * DEG, 1e-10)
+      expect(node.max).to.be.closeTo(90 * DEG, 1e-10)
+      expect(node.hysteresis).to.be.closeTo(5 * DEG, 1e-10)
+    })
+
+    it('hysteresis is omitted from AST when not provided', () => {
+      const node = parseExpression('a BETWEEN(-60, 60)')
+      expect(node).to.not.have.property('hysteresis')
+    })
+
+    it('throws on negative hysteresis', () => {
+      expect(() => parseExpression('a BETWEEN(-60, 60, -5)')).to.throw(/non-negative/)
+    })
   })
 
   describe('deg suffix on comparison operators', () => {

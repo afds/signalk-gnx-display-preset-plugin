@@ -5,7 +5,6 @@ export interface PresetConfig {
 
 export interface ProfileConfig {
   name: string
-  hysteresis?: number
   presets: PresetConfig[]
 }
 
