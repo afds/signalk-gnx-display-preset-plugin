@@ -17,11 +17,13 @@ updates:
     labels:
       - dependencies
     commit-message:
-      prefix: deps
-      prefix-development: deps-dev
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
     groups:
       # Cosmetic type definitions — safe to batch, including majors.
+      # dependency-type: development enforces the runtime-ungrouped invariant from config.
       types:
+        dependency-type: development
         patterns:
           - "@types/*"
         update-types:
@@ -29,7 +31,9 @@ updates:
           - minor
           - patch
       # Test stack moves as a unit; breakage surfaces together in `npm test`.
+      # dependency-type: development is defense-in-depth against future refactors.
       test-stack:
+        dependency-type: development
         patterns:
           - mocha
           - chai
@@ -60,7 +64,7 @@ updates:
       - dependencies
       - github-actions
     commit-message:
-      prefix: ci
+      prefix: "chore(ci)"
     groups:
       actions:
         patterns:
