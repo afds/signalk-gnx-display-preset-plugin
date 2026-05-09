@@ -2,9 +2,9 @@ const { expect } = require('chai')
 const { evaluate } = require('../dist/expression')
 const { parseExpression } = require('../dist/parser')
 
-function eval$(expr, values, hysteresis, previouslyActive) {
+function eval$(expr, values, previouslyActive) {
   const node = parseExpression(expr)
-  return evaluate(node, (path) => values[path], hysteresis, previouslyActive)
+  return evaluate(node, (path) => values[path], previouslyActive)
 }
 
 describe('evaluate', () => {
@@ -179,57 +179,54 @@ describe('evaluate', () => {
   })
 
   describe('hysteresis', () => {
-    it('BETWEEN widens range when previouslyActive', () => {
-      // Without hysteresis: BETWEEN(-60, 60) at value 61 -> false
-      expect(eval$('a BETWEEN(-60, 60)', { a: 61 }, 0, false)).to.be.false
-      // With hysteresis=5 and previouslyActive: BETWEEN(-60, 60) at 61 -> true (range widens to -65..65)
-      expect(eval$('a BETWEEN(-60, 60)', { a: 61 }, 5, true)).to.be.true
-      // But 66 is still outside even with hysteresis=5
-      expect(eval$('a BETWEEN(-60, 60)', { a: 66 }, 5, true)).to.be.false
+    it('BETWEEN with hysteresis widens range when previouslyActive', () => {
+      // Without hysteresis arg: BETWEEN(-60, 60) at 61 -> false
+      expect(eval$('a BETWEEN(-60, 60)', { a: 61 }, false)).to.be.false
+      // With hysteresis=5 and previouslyActive: range widens to [-65, 65]
+      expect(eval$('a BETWEEN(-60, 60, 5)', { a: 61 }, true)).to.be.true
+      // 66 is still outside even with hysteresis=5
+      expect(eval$('a BETWEEN(-60, 60, 5)', { a: 66 }, true)).to.be.false
     })
 
-    it('OUTSIDE narrows range when previouslyActive', () => {
-      // Without hysteresis: OUTSIDE(-60, 60) at value -59 -> false (in range)
-      expect(eval$('a OUTSIDE(-60, 60)', { a: -59 }, 0, false)).to.be.false
-      // With hysteresis=5 and previouslyActive: OUTSIDE(-60, 60) at -59 -> true (thresholds become -55..55)
-      expect(eval$('a OUTSIDE(-60, 60)', { a: -59 }, 5, true)).to.be.true
+    it('BETWEEN hysteresis does not apply when not previouslyActive', () => {
+      // Entry threshold is strict: 61 is not in [-60, 60]
+      expect(eval$('a BETWEEN(-60, 60, 5)', { a: 61 }, false)).to.be.false
     })
 
-    it('does not apply hysteresis when not previouslyActive', () => {
-      expect(eval$('a BETWEEN(-60, 60)', { a: 61 }, 5, false)).to.be.false
+    it('OUTSIDE with hysteresis narrows dead zone when previouslyActive', () => {
+      // Without hysteresis arg: OUTSIDE(-60, 60) at -59 -> false
+      expect(eval$('a OUTSIDE(-60, 60)', { a: -59 }, false)).to.be.false
+      // With hysteresis=5 and previouslyActive: thresholds become [-55, 55]
+      expect(eval$('a OUTSIDE(-60, 60, 5)', { a: -59 }, true)).to.be.true
     })
 
-    it('applies hysteresis to > operator', () => {
-      // > 10 with hysteresis=2 and active: threshold becomes 8
-      expect(eval$('a > 10', { a: 9 }, 2, true)).to.be.true
-      expect(eval$('a > 10', { a: 9 }, 2, false)).to.be.false
+    it('OUTSIDE hysteresis does not apply when not previouslyActive', () => {
+      expect(eval$('a OUTSIDE(-60, 60, 5)', { a: -59 }, false)).to.be.false
     })
 
-    it('applies hysteresis to < operator', () => {
-      // < 10 with hysteresis=2 and active: threshold becomes 12
-      expect(eval$('a < 10', { a: 11 }, 2, true)).to.be.true
-      expect(eval$('a < 10', { a: 11 }, 2, false)).to.be.false
+    it('BETWEEN with deg hysteresis converts correctly', () => {
+      const deg = Math.PI / 180
+      // BETWEEN(-90deg, 90deg, 5deg): boundaries ~1.5708, hysteresis ~0.0873
+      // At 91 degrees (just past max), with hysteresis active, should be true
+      expect(eval$('a BETWEEN(-90deg, 90deg, 5deg)', { a: 91 * deg }, true)).to.be.true
+      // At 96 degrees (past hysteresis), should be false
+      expect(eval$('a BETWEEN(-90deg, 90deg, 5deg)', { a: 96 * deg }, true)).to.be.false
     })
 
-    it('applies hysteresis to >= operator', () => {
-      expect(eval$('a >= 10', { a: 8 }, 2, true)).to.be.true
-      expect(eval$('a >= 10', { a: 8 }, 2, false)).to.be.false
-    })
-
-    it('applies hysteresis to <= operator', () => {
-      expect(eval$('a <= 10', { a: 12 }, 2, true)).to.be.true
-      expect(eval$('a <= 10', { a: 12 }, 2, false)).to.be.false
+    it('no hysteresis argument: behaves without deadband regardless of previouslyActive', () => {
+      expect(eval$('a BETWEEN(-60, 60)', { a: 61 }, true)).to.be.false
+      expect(eval$('a OUTSIDE(-60, 60)', { a: -59 }, true)).to.be.false
     })
   })
 
   describe('full scenario: default racing profile', () => {
     const deg = Math.PI / 180
 
-    function evalProfile(presetExprs, values, hysteresis) {
+    function evalProfile(presetExprs, values) {
       for (let i = 0; i < presetExprs.length; i++) {
         if (!presetExprs[i]) continue
         const node = parseExpression(presetExprs[i])
-        if (evaluate(node, (path) => values[path], hysteresis)) {
+        if (evaluate(node, (path) => values[path])) {
           return i
         }
       }

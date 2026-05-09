@@ -29,16 +29,12 @@ export default function (app: any) {
     const profile = getActiveProfile();
     if (!profile) return;
 
-    const hysteresis = profile.hysteresis
-      ? profile.hysteresis * (Math.PI / 180)
-      : 0;
-
     let result: number | null = null;
     for (let i = 0; i < parsedPresets.length && i < 4; i++) {
       const node = parsedPresets[i];
       if (!node) continue;
       const previouslyActive = lastPresetIndex === i;
-      if (evaluate(node, (path) => app.getSelfPath(path + ".value"), hysteresis, previouslyActive)) {
+      if (evaluate(node, (path) => app.getSelfPath(path + ".value"), previouslyActive)) {
         result = i;
         break;
       }
@@ -111,7 +107,6 @@ export default function (app: any) {
           default: [
             {
               name: "default",
-              hysteresis: 5,
               presets: [
                 {
                   name: "Racing timer",
@@ -119,11 +114,11 @@ export default function (app: any) {
                 },
                 {
                   name: "Upwind",
-                  when: "navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg)",
+                  when: "navigation.racing.status == 'racing' AND environment.wind.angleTrueWater BETWEEN(-90deg, 90deg, 5deg)",
                 },
                 {
                   name: "Downwind",
-                  when: "navigation.racing.status == 'racing' AND environment.wind.angleTrueWater OUTSIDE(-90deg, 90deg)",
+                  when: "navigation.racing.status == 'racing' AND environment.wind.angleTrueWater OUTSIDE(-90deg, 90deg, 5deg)",
                 },
                 {
                   name: "Sailing",
@@ -140,12 +135,6 @@ export default function (app: any) {
               name: {
                 type: "string" as const,
                 title: "Profile Name",
-              },
-              hysteresis: {
-                type: "number" as const,
-                title: "Hysteresis (degrees)",
-                description: "Deadband applied to numeric boundaries to prevent preset flapping",
-                default: 0,
               },
               presets: {
                 type: "array" as const,
@@ -165,8 +154,9 @@ export default function (app: any) {
                       type: "string" as const,
                       title: "Condition Expression",
                       description:
-                        "Operators: == != > < >= <= BETWEEN(min, max) OUTSIDE(min, max). " +
-                        "Logic: AND OR NOT ( ). Append 'deg' for degree-to-radian conversion.",
+                        "Operators: == != > < >= <= BETWEEN(min, max [, hysteresis]) OUTSIDE(min, max [, hysteresis]). " +
+                        "Logic: AND OR NOT ( ). Append 'deg' for degree-to-radian conversion. " +
+                        "The optional hysteresis argument is a deadband applied to the boundaries while this preset is already active, to prevent flapping.",
                     },
                   },
                 },

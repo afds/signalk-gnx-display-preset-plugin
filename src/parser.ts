@@ -8,8 +8,8 @@ export type ExprNode =
   | { kind: 'lt'; path: string; value: number }
   | { kind: 'gte'; path: string; value: number }
   | { kind: 'lte'; path: string; value: number }
-  | { kind: 'between'; path: string; min: number; max: number }
-  | { kind: 'outside'; path: string; min: number; max: number }
+  | { kind: 'between'; path: string; min: number; max: number; hysteresis?: number }
+  | { kind: 'outside'; path: string; min: number; max: number; hysteresis?: number }
   | { kind: 'true' }
   | { kind: 'false' }
 
@@ -266,10 +266,23 @@ class Parser {
       this.expect('comma')
       const maxTok = this.advance()
       if (maxTok.type !== 'number') throw new Error(`Expected number for max but got ${maxTok.type}`)
+
+      // Optional third argument: hysteresis (deadband applied when preset is currently active)
+      let hysteresis: number | undefined
+      if (this.peek()?.type === 'comma') {
+        this.advance()
+        const hystTok = this.advance()
+        if (hystTok.type !== 'number') throw new Error(`Expected number for hysteresis but got ${hystTok.type}`)
+        if (hystTok.value < 0) throw new Error(`Hysteresis must be non-negative, got ${hystTok.value}`)
+        hysteresis = hystTok.value
+      }
+
       this.expect('paren', ')')
 
       const kind = op.value === 'BETWEEN' ? 'between' as const : 'outside' as const
-      return { kind, path, min: minTok.value, max: maxTok.value }
+      return hysteresis !== undefined
+        ? { kind, path, min: minTok.value, max: maxTok.value, hysteresis }
+        : { kind, path, min: minTok.value, max: maxTok.value }
     }
 
     throw new Error(`Expected operator after path but got ${op.type} '${(op as any).value}'`)
